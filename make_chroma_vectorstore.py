@@ -3,16 +3,17 @@
 """
 ChromaDB Vector Store Creator for RAG Systems
 
-This script processes PDF documents and creates a vector store database using ChromaDB
+This script processes documents and creates a vector store database using ChromaDB
 for use in Retrieval Augmented Generation (RAG) systems. It handles document loading,
 text chunking, embedding generation, and storage.
 
 Process Flow:
 -----------
 1. Document Loading:
-   - Recursively finds all PDFs in specified directory
+   - Recursively finds all supported files in specified directory
    - Loads and extracts text content
    - Preserves document metadata
+   - Supports multiple file types
 
 2. Text Processing:
    - Splits documents into manageable chunks
@@ -33,18 +34,35 @@ Process Flow:
 Directory Structure:
 -----------------
 documents/
-    └── *.pdf  # Place your PDF files here
+    ├── *.txt   # Text files
+    ├── *.pdf   # PDF files
+    ├── *.md    # Markdown files
+    ├── *.rst   # ReStructured Text files
+    ├── *.ppt   # PowerPoint files
+    ├── *.pptx  # PowerPoint files
+    ├── *.doc   # Word documents
+    ├── *.docx  # Word documents
+    ├── *.xls   # Excel files
+    ├── *.xlsx  # Excel files
+    ├── *.html  # HTML files
+    ├── *.csv   # CSV files
+    ├── *.json  # JSON files
+    ├── *.eml   # Email files
+    ├── *.rtf   # RTF files
+    └── *.epub  # EPUB files
 
 Requirements:
 -----------
 - langchain_community: For document loading and processing
 - langchain_ollama: For embedding generation
 - chromadb: For vector storage
-- Ollama: Running locally with nomic-embed-text model
+- unstructured[all]: For processing various document formats
+- python-magic: For file type detection
+- Additional format-specific packages (see requirements.txt)
 
 Usage:
 -----
-1. Place PDF documents in the 'documents' directory
+1. Place documents in the 'documents' directory
 2. Run the script:
     python make_chroma_vectorstore.py
 
@@ -55,27 +73,60 @@ Note:
 - Large documents may take time to process
 """
 
-from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader
+from langchain_community.document_loaders import DirectoryLoader, TextLoader, PyPDFLoader
+from langchain_community.document_loaders import UnstructuredMarkdownLoader, UnstructuredRSTLoader
+from langchain_community.document_loaders import UnstructuredPowerPointLoader
+from langchain_community.document_loaders import UnstructuredWordDocumentLoader
+from langchain_community.document_loaders import UnstructuredExcelLoader
+from langchain_community.document_loaders import BSHTMLLoader
+from langchain_community.document_loaders import CSVLoader
+from langchain_community.document_loaders import JSONLoader
+from langchain_community.document_loaders import UnstructuredEmailLoader
+from langchain_community.document_loaders import UnstructuredRTFLoader
+from langchain_community.document_loaders import UnstructuredEPubLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.llms import Ollama
 from chromadb import PersistentClient
 import os
+import glob
+from typing import List, Dict
 import time
 from langchain_ollama import OllamaEmbeddings
 
-def process_documents(directory_path, collection):
+def get_file_loader(file_path: str):
     """
-    Process PDF documents from a directory and add them to ChromaDB.
+    Get the appropriate loader based on file extension.
+    
+    Args:
+        file_path (str): Path to the file
+        
+    Returns:
+        loader_class: Appropriate langchain loader class for the file type
+    """
+    ext = os.path.splitext(file_path)[1].lower()
+    loaders = {
+        '.txt': TextLoader,
+        '.pdf': PyPDFLoader,
+        '.md': UnstructuredMarkdownLoader,
+        '.rst': UnstructuredRSTLoader,
+        '.ppt': UnstructuredPowerPointLoader,
+        '.pptx': UnstructuredPowerPointLoader,
+    }
+    return loaders.get(ext, TextLoader)  # Default to TextLoader for unknown types
+
+def process_documents(directory_path: str, collection) -> None:
+    """
+    Process documents from a directory and add them to ChromaDB.
     
     This function:
-    1. Loads PDF documents from specified directory
+    1. Loads documents from specified directory
     2. Splits them into chunks
     3. Generates embeddings
     4. Stores in ChromaDB with metadata
     
     Args:
-        directory_path (str): Path to directory containing PDF files
+        directory_path (str): Path to directory containing documents
         collection: ChromaDB collection for storing embeddings
         
     Processing Details:
@@ -84,26 +135,38 @@ def process_documents(directory_path, collection):
     - Embedding model: nomic-embed-text
     - Storage format: cosine similarity space
     
-    Document Processing Flow:
-    1. Directory scanning
-    2. PDF loading and text extraction
-    3. Text chunking
-    4. Embedding generation
-    5. Vector storage
-    
-    Note:
-        - Requires PDFs in the specified directory
-        - May take significant time for large documents
-        - Preserves document source in metadata
+    Supported File Types:
+    - Text files (.txt) - default
+    - PDF files (.pdf)
+    - Markdown files (.md)
+    - ReStructured Text files (.rst)
     """
     # Check if directory exists
     if not os.path.exists(directory_path):
         print(f"Directory {directory_path} does not exist")
         return
 
-    # Load PDF documents from the specified directory
-    loader = DirectoryLoader(directory_path, glob="**/*.pdf", loader_cls=PyPDFLoader)
-    documents = loader.load()
+    # Process all supported file types
+    documents = []
+    supported_extensions = ['.txt', '.pdf', '.md', '.rst', '.ppt', '.pptx']
+    
+    for ext in supported_extensions:
+        pattern = os.path.join(directory_path, f"**/*{ext}")
+        matching_files = glob.glob(pattern, recursive=True)
+        
+        for file_path in matching_files:
+            try:
+                loader_class = get_file_loader(file_path)
+                loader = loader_class(file_path)
+                docs = loader.load()
+                documents.extend(docs)
+                print(f"Processed: {file_path}")
+            except Exception as e:
+                print(f"Error processing {file_path}: {str(e)}")
+    
+    if not documents:
+        print("No documents found to process")
+        return
     
     # Split documents into chunks
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
@@ -120,7 +183,10 @@ def process_documents(directory_path, collection):
     for i, doc in enumerate(texts):
         embedding = embedding_model.embed_query(doc.page_content)
         embeddings.append(embedding)
-        metadatas.append({"source": doc.metadata.get("source", "unknown")})
+        metadatas.append({
+            "source": doc.metadata.get("source", "unknown"),
+            "file_type": os.path.splitext(doc.metadata.get("source", ""))[1][1:] or "unknown"
+        })
         ids.append(f"doc_{i}")
     
     # Add documents and embeddings to ChromaDB
@@ -165,6 +231,27 @@ def init_embeddings():
     
     return collection
 
+def init_loaders():
+    """Initialize document loaders for different file types."""
+    return {
+        ".txt": (TextLoader, {}),
+        ".pdf": (PyPDFLoader, {}),
+        ".md": (UnstructuredMarkdownLoader, {}),
+        ".rst": (UnstructuredRSTLoader, {}),
+        ".ppt": (UnstructuredPowerPointLoader, {}),
+        ".pptx": (UnstructuredPowerPointLoader, {}),
+        ".doc": (UnstructuredWordDocumentLoader, {}),
+        ".docx": (UnstructuredWordDocumentLoader, {}),
+        ".xls": (UnstructuredExcelLoader, {}),
+        ".xlsx": (UnstructuredExcelLoader, {}),
+        ".html": (BSHTMLLoader, {}),
+        ".csv": (CSVLoader, {}),
+        ".json": (JSONLoader, {}),
+        ".eml": (UnstructuredEmailLoader, {}),
+        ".rtf": (UnstructuredRTFLoader, {}),
+        ".epub": (UnstructuredEPubLoader, {})
+    }
+
 def main():
     """
     Main function to orchestrate the document processing pipeline.
@@ -176,12 +263,12 @@ def main():
     
     The function:
     - Sets up necessary components
-    - Processes all PDF documents
+    - Processes all documents
     - Provides feedback on completion
     
     Note:
         - Requires 'documents' directory
-        - Processes all PDFs recursively
+        - Processes all documents recursively
         - Maintains persistent storage
     """
     directory_path = "documents"

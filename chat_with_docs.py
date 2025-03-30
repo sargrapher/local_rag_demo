@@ -69,23 +69,24 @@ def setup_argparse():
     
     Returns:
         argparse.Namespace: Parsed command-line arguments containing:
-            - model: Name of the Ollama model to use
+            - model: Name of the Ollama model to use (defaults to 'mistral')
             
     Example:
         args = setup_argparse()
-        model_name = args.model  # e.g., 'llama2', 'mistral'
+        model_name = args.model  # e.g., 'mistral', 'llama2', 'neural-chat'
     """
     parser = argparse.ArgumentParser(
         description='Chat with your documents using an Ollama model',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog='''
 Examples:
-    %(prog)s llama2
-    %(prog)s mistral
-    %(prog)s neural-chat
+    %(prog)s              # Uses default model (mistral)
+    %(prog)s llama2       # Use llama2 model
+    %(prog)s neural-chat  # Use neural-chat model
         '''
     )
-    parser.add_argument('model', help='Name of the Ollama model to use (e.g., llama2, mistral)')
+    parser.add_argument('model', nargs='?', default='mistral',
+                       help='Name of the Ollama model to use (default: mistral)')
     return parser.parse_args()
 
 def get_relevant_context(query, collection, embeddings_model):

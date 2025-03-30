@@ -1,125 +1,114 @@
-# Local Document Chat with Ollama
+# Qwen Document Embeddings
 
-This project is a simple example of creating a local chat interface for your documents using a local Ollama LLM. It contains utilities that allow the exploration of each step in the process of generating local embeddings, storing them, and using them for document retrieval and question answering.
+This project uses the GTE-Qwen2-7B-instruct model to generate embeddings for documents and store them in ChromaDB for semantic search.
 
-## Overview
+## System Requirements
 
-The project demonstrates the key components of a RAG (Retrieval-Augmented Generation) system:
-1. Document processing and embedding generation
-2. Vector storage and retrieval
-3. LLM-powered question answering
-
-## Utility Programs
-
-### Document Processing and Exploration
-
-#### `show_chunks.py`
-Demonstrates how documents are split into chunks:
-- Shows different chunking strategies (recursive, character, token-based)
-- Displays chunk boundaries and overlap
-- Helps understand how documents are prepared for embedding
+### Ubuntu/Debian
 ```bash
-python show_chunks.py your_document.pdf
+sudo apt-get update
+sudo apt-get install build-essential libpoppler-cpp-dev pkg-config python-dev-is-python3
 ```
 
-#### `show_tokens.py`
-Explores how text is tokenized:
-- Shows how different models tokenize text
-- Displays token IDs and their text
-- Helps understand token-based text processing
+### Windows
+- Install Microsoft Visual C++ Build Tools
+- Install Magic Binary from https://github.com/pidydx/libmagicwin64
+
+## Installation
+
+1. Clone the repository
+2. Install Python dependencies:
 ```bash
-python show_tokens.py "Your text here"
+pip install -r requirements.txt
 ```
 
-### Core RAG Components
+## Usage
 
-#### `make_chroma_vectorstore.py`
-Processes documents and creates the vector database:
-- Loads PDF documents from a directory
-- Splits them into semantic chunks
-- Generates embeddings using Ollama's nomic-embed-text
-- Stores everything in a ChromaDB database
+### Creating the Vector Store
+
+Basic usage with default directories:
 ```bash
 python make_chroma_vectorstore.py
 ```
 
-#### `chat_with_docs.py`
-Interactive chat interface for document Q&A:
-- Retrieves relevant document chunks
-- Uses Ollama LLM for response generation
-- Provides conversational interface
+Specify custom directories:
 ```bash
-python chat_with_docs.py mistral
+python make_chroma_vectorstore.py --docs-dir /path/to/documents --db-path /path/to/database
 ```
 
-#### `read_embeddings.py`
-Utility to inspect the vector database:
-- Shows stored documents and their metadata
-- Displays embedding statistics
-- Helps verify document processing
+### Chatting with Documents
+
+Basic usage with default model (Mistral):
 ```bash
-python read_embeddings.py
+python chat_with_docs.py
 ```
 
-## Setup
-
-1. **Install Dependencies**
+Use a different model:
 ```bash
-pip install langchain-community langchain-ollama chromadb
+python chat_with_docs.py llama2
+python chat_with_docs.py neural-chat
 ```
 
-2. **Install Ollama**
-- Install from [Ollama's website](https://ollama.ai)
-- Pull required models:
+All available options:
 ```bash
-ollama pull nomic-embed-text  # for embeddings
-ollama pull mistral           # or any other model for chat
+python chat_with_docs.py --help
 ```
 
-3. **Prepare Documents**
+Command line options:
+- `--docs-dir`: Directory containing documents to process (default: ./documents)
+- `--db-path`: Directory for ChromaDB storage (default: ./qwen_db)
+- `--model-path`: Path to the local model files (default: ./models/gte-Qwen2-7B-instruct)
+
+Examples:
 ```bash
-mkdir documents
-# Add your PDF files to the 'documents' directory
+# Process documents from a specific directory
+python make_chroma_vectorstore.py --docs-dir /home/user/my_documents
+
+# Store ChromaDB in a custom location
+python make_chroma_vectorstore.py --db-path /data/embeddings_db
+
+# Specify both directories
+python make_chroma_vectorstore.py --docs-dir /home/user/my_documents --db-path /data/embeddings_db
+
+# Use a different model path
+python make_chroma_vectorstore.py --model-path /path/to/custom/model
 ```
 
-## Learning Path
+Now you can:
+1. Use default locations by running `python make_chroma_vectorstore.py`
+2. Specify custom locations using command line arguments
+3. See all options with `python make_chroma_vectorstore.py --help`
 
-1. Start by exploring document chunking:
-   ```bash
-   python show_chunks.py sample.pdf
-   ```
+The script will create any directories that don't exist and provide appropriate feedback. All paths can be either relative or absolute.
 
-2. Understand tokenization:
-   ```bash
-   python show_tokens.py "Sample text to tokenize"
-   ```
+The script will:
+- Process all documents in the `documents` directory
+- Generate embeddings using Qwen2-7B-instruct
+- Store the embeddings and document content in `qwen_db`
 
-3. Process your documents:
-   ```bash
-   python make_chroma_vectorstore.py
-   ```
+Supported document types:
+- PDF files (*.pdf)
+- Word documents (*.doc, *.docx)
+- Text files (*.txt)
+- Markdown files (*.md)
+- ReStructured Text files (*.rst)
+- PowerPoint files (*.ppt, *.pptx)
+- Excel files (*.xls, *.xlsx)
+- HTML files (*.html)
+- CSV files (*.csv)
+- JSON files (*.json)
+- Email files (*.eml)
+- RTF files (*.rtf)
+- EPUB files (*.epub)
 
-4. Inspect the results:
-   ```bash
-   python read_embeddings.py
-   ```
-
-5. Start chatting with your documents:
-   ```bash
-   python chat_with_docs.py mistral
-   ```
-
-## Project Structure
+## Directory Structure
 ```
 .
 ├── README.md
-├── show_chunks.py            # Document chunking demonstration
-├── show_tokens.py           # Tokenization exploration
-├── make_chroma_vectorstore.py # Vector database creation
-├── chat_with_docs.py        # Interactive chat interface
-├── read_embeddings.py       # Database inspection tool
-├── documents/               # Your PDF files
-└── chromadb/               # Vector database storage
+├── make_chroma_vectorstore.py
+├── requirements.txt
+├── documents/     # Place your documents here
+└── qwen_db/       # ChromaDB storage (created automatically)
 ```
 
 ## Technical Details
@@ -143,10 +132,20 @@ mkdir documents
 
 #### Required Models
 - nomic-embed-text (for generating embeddings)
-- At least one LLM model for querying (e.g., mistral, llama2, or neural-chat)
+- Mistral (default) or other LLM model for querying (e.g., llama2, neural-chat)
 
 ## Notes
 - This is an educational project to understand RAG systems
 - Each utility can be used independently to explore different aspects
 - Great starting point for building more complex document Q&A systems
-- All processing is done locally for privacy and learning purposes 
+- All processing is done locally for privacy and learning purposes
+
+## Initial Setup
+
+1. First, download the model (this is a one-time operation):
+```bash
+python download_model.py
+```
+This will download the model files (several GB) to the `./models` directory.
+
+2. After downloading, the script will run completely locally without requiring internet access 
