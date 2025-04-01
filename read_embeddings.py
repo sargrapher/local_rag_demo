@@ -16,7 +16,7 @@ Key Features:
 
 Technical Details:
 ----------------
-- Uses ChromaDB's PersistentClient for stable storage
+- Uses ChromaDB's Client for stable storage
 - Assumes documents are stored in 'document_embeddings' collection
 - Preserves and displays original document IDs
 - Shows metadata associated with each embedding
@@ -43,7 +43,7 @@ This script is read-only and won't modify your embeddings database.
 It's safe to use for inspection and debugging purposes.
 """
 
-from chromadb import PersistentClient
+from chromadb import Client, PersistentClient
 from typing import Dict, List, Any
 
 def read_embeddings() -> None:
