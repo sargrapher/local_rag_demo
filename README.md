@@ -72,6 +72,44 @@ If you used venv:
 source venv/bin/activate
 ```
 
+## Usage Examples
+
+### Creating a Vector Store
+
+```bash
+# Create a vector store from all documents in the documents directory
+python make_chroma_vectorstore.py
+
+# Create a vector store with specific chunk size and overlap
+python make_chroma_vectorstore.py --chunk_size 1000 --chunk_overlap 200
+```
+
+### Chatting with Documents
+
+```bash
+# Start the chat interface with default settings
+python chat_with_docs.py
+
+# Use a specific model
+python chat_with_docs.py --model llama2
+
+# Adjust the number of documents to retrieve
+python chat_with_docs.py --num_docs 5
+```
+
+### Analyzing Documents
+
+```bash
+# Show document chunks
+python show_chunks.py
+
+# Show token counts
+python show_tokens.py
+
+# Read embeddings
+python read_embeddings.py
+```
+
 ## License
 
 MIT License 
