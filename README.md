@@ -1,6 +1,37 @@
-# Local RAG Demo
+# Local RAG Demo with Docker
 
-A local RAG (Retrieval Augmented Generation) system using Ollama and ChromaDB. This project allows you to chat with your documents locally, without any cloud dependencies.
+This project demonstrates a Retrieval-Augmented Generation (RAG) application using Docker, Ollama, and ChromaDB. The application processes documents, creates embeddings, and stores them in a vector database for efficient retrieval.
+
+## Quick Start
+
+1. **Docker Setup**
+   - Follow the detailed instructions in [DOCKER_SETUP.md](DOCKER_SETUP.md)
+   - Or use these basic commands:
+     ```bash
+     # Build and start
+     docker-compose up --build
+     
+     # Start chat interface (in new terminal)
+     docker-compose exec app python3 chat_with_docs.py
+     ```
+
+2. **Manual Setup**
+   - Install dependencies from `requirements.txt`
+   - Run `make_chroma_vectorstore.py` to process documents
+   - Start `chat_with_docs.py` to interact with documents
+
+## Prerequisites
+
+- Docker and Docker Compose installed
+- Ollama installed and running on the host machine
+- At least 8GB of RAM recommended
+- Sufficient disk space for document storage and vector database
+
+## Documentation
+
+- [DOCKER_SETUP.md](DOCKER_SETUP.md) - Detailed Docker setup and usage guide
+- [SETUP.md](SETUP.md) - Manual setup instructions
+- [CONTRIBUTING.md](CONTRIBUTING.md) - Contributing guidelines
 
 ## Features
 
@@ -10,187 +41,112 @@ A local RAG (Retrieval Augmented Generation) system using Ollama and ChromaDB. T
 - No cloud dependencies
 - Support for various document formats
 
-## Quick Start
-
-1. Place your documents in the `documents` directory
-2. Run the vector store creation script:
-   ```bash
-   python make_chroma_vectorstore.py
-   ```
-3. Start the chat interface:
-   ```bash
-   python chat_with_docs.py
-   ```
-
 ## Project Structure
 
 ```
 local_rag_demo/
-├── documents/          # Place your documents here
-├── chromadb/          # Vector store database
-├── setup_windows.ps1  # Windows setup script
-├── make_chroma_vectorstore.py  # Creates the vector store
-├── chat_with_docs.py  # Main chat interface
-├── show_chunks.py     # Demonstrates text chunking
-├── show_tokens.py     # Shows tokenization
-└── read_embeddings.py # Inspects stored embeddings
+├── Dockerfile              # Docker image configuration
+├── docker-compose.yml      # Docker Compose configuration
+├── requirements.txt        # Python dependencies
+├── documents/             # Directory for input documents
+├── chromadb/             # Directory for vector database
+└── *.py                  # Python scripts for processing
 ```
 
-## Supported Models
+## Configuration
 
-The following Ollama models are supported:
-- `mistral:7b-4bit` (recommended)
-- `llama2`
-- `neural-chat`
-- `deepseek-r1`
-- `nomic-embed-text`
+The application can be configured through environment variables in `docker-compose.yml`:
 
-## Setup
+- `OLLAMA_HOST`: URL of the Ollama service (default: http://localhost:11434)
 
-For detailed setup instructions, see [SETUP.md](SETUP.md). Alternatively, you can use the automated setup script:
+## Troubleshooting
 
-### Windows
-```powershell
-.\setup_windows.ps1
-```
+1. **Port Conflicts**
+   - If port 11434 is already in use:
+     ```bash
+     # Check if Ollama is already running
+     ps aux | grep ollama
+     
+     # If Ollama is running, you can use it directly
+     # If not, stop any process using the port
+     sudo lsof -i :11434
+     sudo kill <PID>
+     ```
 
-This script will handle the installation of dependencies and setup of the environment automatically.
+2. **Permission Issues**
+   - If you encounter permission errors:
+     ```bash
+     sudo usermod -aG docker $USER
+     newgrp docker
+     ```
 
-> **Note:** The Ollama installation and model download may take quite a while, especially on slower connections. The initial model download (mistral:7b-4bit) is approximately 4GB and may take 10-30 minutes depending on your internet speed.
+3. **Container Issues**
+   - To clean up and start fresh:
+     ```bash
+     docker-compose down -v
+     docker system prune -f
+     ```
 
-### After Setup
+4. **Ollama Connection Issues**
+   - Ensure Ollama is running before starting the container
+   - Check Ollama status:
+     ```bash
+     ollama list
+     ```
+   - If needed, pull the required model:
+     ```bash
+     ollama pull llama2
+     ```
 
-If you used Conda for the setup:
+## Common Commands
+
 ```bash
-# Activate the Conda environment
-conda activate local_rag_demo
+# Start the application
+docker-compose up --build
+
+# Stop the application
+docker-compose down
+
+# View logs
+docker-compose logs -f
+
+# Clean up resources
+docker-compose down -v
+docker system prune -f
+
+# Check Ollama status
+ollama list
+
+# Pull required model
+ollama pull llama2
 ```
 
-If you used venv:
-```bash
-# On Windows
-.\venv\Scripts\activate
+## Success Indicators
 
-# On Linux/macOS
-source venv/bin/activate
-```
+When the application runs successfully, you should see:
+1. Documents being processed: `Processed: documents/<filename>`
+2. Embeddings being added: `Add of existing embedding ID: doc_X`
+3. Final confirmation: `Successfully added X embeddings to ChromaDB`
+4. Exit code 0 indicating successful completion
 
-## Scripts Overview
+## Notes
 
-### 1. make_chroma_vectorstore.py
-**Description:** Creates a vector store database using ChromaDB for RAG systems. It handles document loading, text chunking, embedding generation, and storage.
+- The application uses the host network mode to communicate with Ollama
+- Documents are processed and stored in the `chromadb` directory
+- The vector database persists between runs
+- Make sure Ollama is running before starting the application
 
-**Process Flow:**
-1. Document Loading: Recursively finds all supported files in the specified directory
-2. Text Processing: Splits documents into manageable chunks with overlap
-3. Embedding Generation: Converts text chunks to vector embeddings using Ollama's nomic-embed-text model
-4. Vector Storage: Stores embeddings in ChromaDB with metadata
+## Security Considerations
 
-**Usage:**
-```bash
-# Basic usage
-python make_chroma_vectorstore.py
+- The application runs with host network mode for simplicity
+- In production, consider using a more restricted network configuration
+- Ensure proper access controls for the documents directory
+- Keep Ollama updated for security patches
 
-# With custom chunk size and overlap
-python make_chroma_vectorstore.py --chunk_size 1000 --chunk_overlap 200
-```
+## Contributing
 
-### 2. chat_with_docs.py
-**Description:** Implements a Retrieval-Augmented Generation (RAG) chatbot that answers questions about your documents by combining document retrieval with LLM-powered response generation.
-
-**Architecture:**
-1. Document Retrieval: Uses ChromaDB for semantic search
-2. Response Generation: Uses Ollama's LLM models for context-aware responses
-
-**Usage:**
-```bash
-# Default model (mistral:7b-4bit)
-python chat_with_docs.py
-
-# With specific model
-python chat_with_docs.py --model llama2
-
-# Adjust number of documents to retrieve
-python chat_with_docs.py --num_docs 5
-```
-
-**Interactive Commands:**
-- 'quit' or 'exit': End the chat session
-- Empty input: Skipped
-- Any other input: Processed as a question
-
-### 3. show_chunks.py
-**Description:** Demonstrates different text chunking strategies used in RAG systems, showing how text is broken down into smaller, manageable pieces while preserving context.
-
-**Chunking Strategies:**
-1. Recursive Character Splitting: Most sophisticated, splits on natural boundaries
-2. Character-Based Splitting: Simple approach that splits on character count
-3. Token-Based Splitting: Splits based on token count for LLM context windows
-
-**Usage:**
-```bash
-# Basic usage
-python show_chunks.py input.txt
-
-# With specific chunking method
-python show_chunks.py --method recursive input.txt
-python show_chunks.py --method character --chunk_size 500 input.txt
-python show_chunks.py --method token --chunk_size 1000 --chunk_overlap 200 input.txt
-```
-
-### 4. show_tokens.py
-**Description:** Demonstrates how text is broken into tokens using OpenAI's tiktoken library, supporting different encodings used by various GPT models.
-
-**Available Encodings:**
-- cl100k_base: Used by GPT-4, GPT-3.5-turbo
-- p50k_base: Used by GPT-3 models like davinci
-- r50k_base: Used by older GPT-3 models
-
-**Usage:**
-```bash
-# Default encoding (cl100k_base)
-python show_tokens.py "Your text here"
-
-# Specific encoding
-python show_tokens.py --encoding p50k_base "Your text here"
-```
-
-### 5. read_embeddings.py
-**Description:** Reads and displays document embeddings stored in a ChromaDB collection, helping to inspect the embedded documents in your vector store.
-
-**Key Features:**
-- Connects to a persistent ChromaDB instance
-- Retrieves all documents and their associated metadata
-- Displays document content previews and metadata
-- Shows total document count in the collection
-
-**Usage:**
-```bash
-# Simply run the script
-python read_embeddings.py
-```
-
-## Recommended Workflow
-
-1. **Setup Environment:**
-   - Run `setup_windows.ps1` to set up the environment and dependencies
-   - Activate the environment (Conda or venv)
-
-2. **Prepare Documents:**
-   - Place documents in the `documents` directory
-
-3. **Create Vector Store:**
-   - Run `make_chroma_vectorstore.py` to process documents and create embeddings
-
-4. **Analyze Documents (Optional):**
-   - Use `show_chunks.py` to see how documents are chunked
-   - Use `show_tokens.py` to understand tokenization
-   - Use `read_embeddings.py` to inspect the stored embeddings
-
-5. **Start Chat Interface:**
-   - Run `chat_with_docs.py` to interact with your documents
-   - Ask questions about the content of your documents
+Feel free to submit issues and enhancement requests!
 
 ## License
 
-MIT License 
+MIT License
