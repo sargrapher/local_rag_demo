@@ -239,6 +239,45 @@ function Install-Ollama {
     return $true
 }
 
+# Function to install Conda
+function Install-Conda {
+    Write-Host "`nInstalling Miniconda..."
+    
+    # Download Miniconda installer
+    $installerUrl = "https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe"
+    $installerPath = "Miniconda3-latest-Windows-x86_64.exe"
+    
+    Write-Host "Downloading Miniconda installer..."
+    try {
+        Invoke-WebRequest -Uri $installerUrl -OutFile $installerPath
+    } catch {
+        Write-Host "Failed to download Miniconda installer. Please download manually from: $installerUrl"
+        Write-Host "After downloading, run the installer and restart your computer."
+        return $false
+    }
+    
+    # Run the installer silently
+    Write-Host "Running Miniconda installer..."
+    try {
+        Start-Process -FilePath $installerPath -ArgumentList "/S /D=$env:USERPROFILE\miniconda3" -Wait
+    } catch {
+        Write-Host "Failed to run Miniconda installer. Please run it manually."
+        return $false
+    }
+    
+    # Clean up
+    Remove-Item $installerPath -Force
+    
+    # Add Conda to PATH for current session
+    $env:Path = "$env:USERPROFILE\miniconda3;$env:USERPROFILE\miniconda3\Scripts;$env:USERPROFILE\miniconda3\Library\bin;$env:Path"
+    
+    Write-Host "`nMiniconda has been installed. Please follow these steps:"
+    Write-Host "1. Close and reopen PowerShell"
+    Write-Host "2. Run the setup script again"
+    
+    return $true
+}
+
 # Main setup process
 Write-Host "Starting Local RAG Demo setup..."
 
@@ -250,8 +289,14 @@ if (-not (Test-PythonInstalled)) {
 
 # Check Conda installation
 if (-not (Test-CondaInstalled)) {
-    Write-Host "Please install Conda and try again."
-    exit 1
+    Write-Host "Conda not found. Attempting to install..."
+    if (Install-Conda) {
+        Write-Host "Conda installation successful. Please close and reopen PowerShell, then run this script again."
+        exit 0
+    } else {
+        Write-Host "Conda installation failed. Please install manually and try again."
+        exit 1
+    }
 }
 
 # Create Conda environment
@@ -281,4 +326,4 @@ Write-Host "1. Activate the environment: conda activate local_rag_demo"
 Write-Host "2. Place your documents in the 'documents' directory"
 Write-Host "3. Create the vector store: python make_chroma_vectorstore.py"
 Write-Host "4. Start the chat interface: python chat_with_docs.py"
-Write-Host "`nFor more information about the scripts and their usage, see the comments at the top of this file." 
+Write-Host "`nFor more information about the scripts and their usage, see the comments at the top of this file."
