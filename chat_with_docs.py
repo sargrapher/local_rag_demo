@@ -121,7 +121,7 @@ def get_relevant_context(query, collection, embeddings_model):
     # n_results determines how many relevant documents to retrieve
     results = collection.query(
         query_embeddings=[query_embedding],
-        n_results=2
+        n_results=5
     )
     
     # Combine the retrieved documents into a single context string
