@@ -1,6 +1,6 @@
 # Local RAG Demo with Docker
 
-This project demonstrates a Retrieval-Augmented Generation (RAG) application using Docker, Ollama, and ChromaDB. The application processes documents, creates embeddings, and stores them in a vector database for efficient retrieval.
+This project demonstrates a Retrieval-Augmented Generation (RAG) application using Ollama and ChromaDB. The application processes documents, creates embeddings, and stores them in a vector database for efficient retrieval.
 
 ## Quick Start
 
