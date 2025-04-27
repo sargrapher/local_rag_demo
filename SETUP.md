@@ -156,7 +156,7 @@ python make_chroma_vectorstore.py --chunk_size 1000 --chunk_overlap 200
 python chat_with_docs.py
 
 # With specific model
-python chat_with_docs.py --model llama2
+python chat_with_docs.py llama2
 
 # Adjust number of documents to retrieve
 python chat_with_docs.py --num_docs 5
